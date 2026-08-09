@@ -4,7 +4,7 @@ DIGA620 Summer 2026
 Final Project
 """
 
-import requests, json, noaa_token
+import requests, json, noaa_token, google_token
 
 # Stations used for prototype
 stations = {
@@ -37,15 +37,49 @@ parameters = {
 # Data endpoint
 data_endpoint = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
 
+def reverse_geocode(latitude: str, longitude: str) -> dict:
+    """Retrieve Zip, County, State from Google Geocoding API"""
+    # Request components
+    google_data_endpoint = "https://geocode.googleapis.com/v4/geocode/location"
+
+    google_parameters = {
+        "location.latitude": latitude,
+        "location.longitude": longitude
+    }
+
+    google_header = google_token.token
+
+    # Request and JSON-ify results
+    data = requests.get(google_data_endpoint, params = google_parameters, headers = google_header)
+    location_candidates = data.json()["results"]
+
+    # Return object
+    result = dict()
+
+    # Look at the address components of the first result
+    for component in location_candidates[0]["addressComponents"]:
+        component_type = component["types"][0]
+        if component_type == "postal_code":
+            result["Zip"] = component["longText"]
+        elif component_type == "administrative_area_level_2":
+            result["County"] = component["longText"]
+        elif component_type == "administrative_area_level_1":
+            result["State"] = component["shortText"]
+
+    return result
+
 def retrieve_station_data(station: str, station_id: str) -> dict:
     """Retrieve static data for given station"""
     # Build structure
     station_data = {
-        "station_id": station_id,
-        "station_name": station,
-        "latitude": -999,
-        "longitude": -999,
-        "elevation": -999
+        "Station_ID": station_id,
+        "Station_Name": station,
+        "Latitude": -999,
+        "Longitude": -999,
+        "Elevation": -999,
+        "Zip": -999,
+        "County": "",
+        "State": ""
     }
 
     # Update URL path
@@ -55,9 +89,16 @@ def retrieve_station_data(station: str, station_id: str) -> dict:
     station_info = requests.get(url, headers = token)
 
     # Fill in lat, lon, elev data
-    station_data["latitude"] = station_info.json()["latitude"]
-    station_data["longitude"] = station_info.json()["longitude"]
-    station_data["elevation"] = station_info.json()["elevation"]   
+    station_data["Latitude"] = station_info.json()["latitude"]
+    station_data["Longitude"] = station_info.json()["longitude"]
+    station_data["Elevation"] = station_info.json()["elevation"]
+
+    # Fill in Zip, County, State
+    geocode_results: dict = reverse_geocode(station_data["Latitude"], station_data["Longitude"])
+
+    station_data["Zip"] = geocode_results["Zip"]
+    station_data["County"] = geocode_results["County"]
+    station_data["State"] = geocode_results["State"]
 
     return station_data
 
