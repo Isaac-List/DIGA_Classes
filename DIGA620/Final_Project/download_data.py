@@ -8,12 +8,10 @@ import requests, json, noaa_token
 
 # Stations used for prototype
 stations = {
-    "La Crosse": "GHCND:USC00474373",
-    "Holmen": "GHCND:US1WILC0022",
-    "West Salem": "GHCND:US1WILC0001",
-    "Coon Valley": "GHCND:US1WILC0021",
-    "Stoddard": "GHCND:US1WIVR0010",
-    "Viroqua": "GHCND:US1WILC0021"
+    "LA CROSSE WEATHER FORECAST OFFICE": "GHCND:USC00474373",
+    "PRAIRIE DU CHIEN MUNICIPAL AIRPORT": "GHCND:USW00004963",
+    "SPARTA FORT MCCOY": "GHCND:USW00094940",
+    "STEVENS POINT MUNICIPAL AIRPORT": "GHCND:USW00004895"
 }
 
 # NOAA API token
@@ -40,20 +38,15 @@ parameters = {
 data_endpoint = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
 
 def retrieve_station_data(station: str, station_id: str) -> dict:
-    """Retrieve data for given station and add to object"""
+    """Retrieve static data for given station"""
     # Build structure
     station_data = {
         "station_id": station_id,
         "station_name": station,
         "latitude": -999,
         "longitude": -999,
-        "elevation": -999,
-        "dates": {}
+        "elevation": -999
     }
-
-    #
-    # Get station information
-    #
 
     # Update URL path
     url = "https://www.ncei.noaa.gov/cdo-web/api/v2/stations/" + station_id
@@ -64,44 +57,85 @@ def retrieve_station_data(station: str, station_id: str) -> dict:
     # Fill in lat, lon, elev data
     station_data["latitude"] = station_info.json()["latitude"]
     station_data["longitude"] = station_info.json()["longitude"]
-    station_data["elevation"] = station_info.json()["elevation"]
+    station_data["elevation"] = station_info.json()["elevation"]   
 
-    #
-    # Get station weather data
-    #
-    
+    return station_data
+
+def retrieve_weather_data(station: str, station_id: str, weather_data: dict) -> dict:
+    """
+    Retrieve weather data for a given station, return in the format:
+
+    {
+        "01-01-2026": [
+            ["abcdefg", 1, 100, 10],
+            ["hijklmn", 2, 200, 20]   
+        ]
+    }
+
+    Where each date is a list of lists, each list being in the order:
+        station_id, precip, max_temp, min_temp
+    to be split into separate columns once loaded in Excel.
+    """
     # Update stationid in parameters
     parameters["stationid"] = station_id
 
     # Request
     station_weather = requests.get(data_endpoint, params = parameters, headers = token)
 
-    # Fill in precipitation, max temp, min temp for each of the dates (~90 days)
+    # Parse list of dict results
     results: list = station_weather.json()["results"]
 
-    # Results are in sets of 3 -> Precipitation, TMAX, TMIN
+    # Fill in station_id, precip, max_temp, min_temp for each date
+
+    # Results are in sets of 3 by date, thus the for loop jumping by 3's
     for i in range(0, len(results) - 2, 3):
         # Get 4 values from results: date will be key
         working_date = results[i]["date"]
 
-        # These will be values
-        working_date_data = dict()
-        working_date_data["precip"] = results[i]["value"]
-        working_date_data["max_temp"] = results[i + 1]["value"]
-        working_date_data["min_temp"] = results[i + 2]["value"]
+        # Check if date already in object, if not then create with empty list
+        if working_date not in weather_data.keys():
+            weather_data[working_date] = []
 
-        # Add dict of results to station_data
-        station_data["dates"][working_date] = working_date_data
+        # These will be values, start with station_id
+        working_date_data = [station_id, -999, -999, -999]
 
-    return station_data
+        # Since JSON order is inconsistent, add to my JSON in proper order
+        for j in range(i, i+3):
+            if results[j]["datatype"] == "PRCP":
+                working_date_data[1] = results[j]["value"]
+            elif results[j]["datatype"] == "TMAX":
+                working_date_data[2] = results[j]["value"]
+            elif results[j]["datatype"] == "TMIN":
+                working_date_data[3] = results[j]["value"]
+
+        # Add dict of results to date in the weather_data object
+        weather_data[working_date].append(working_date_data)
+
+    return weather_data
     
 def main():
     """Output data for each station to its own JSON file"""
+    # Dictionaries for JSON export
+    station_data_object = dict()
+    weather_data_object = dict()
+
+    # Collect and add info to stations_info, weather_data
     for station in stations:
-        print(f"Retrieving data for {station}")
-        station_data_object: dict = retrieve_station_data(station, stations[station])
-        with open(f"{station}.json", "w") as output:
-            json.dump(station_data_object, output)
-        
+        # Add to stations_info
+        print(f"Retrieving info for {station}")
+        station_data_object[station] = retrieve_station_data(station, stations[station])
+
+        # Add to weather_data
+        print(f"Retrieving weather data for {station}")
+        weather_data_object = retrieve_weather_data(station, stations[station], weather_data_object)
+
+    # Write station info JSON to file
+    with open("stations_info.json", "w") as station_output:
+        json.dump(station_data_object, station_output)
+
+    # Write station info JSON to file
+    with open("weather_data.json", "w") as weather_output:
+        json.dump(weather_data_object, weather_output)
+
 if __name__ == "__main__":
     main()
