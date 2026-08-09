@@ -8,8 +8,8 @@ This is code for my DIGA620 Final Project. `download_data.py` downloads data fro
 `get_stations.py` or `get_stations_fips.py` script to generate a list of acceptable
 stations in JSON format.
 
-- API Token: The code requires an API token available through NOAA's API service. Put your own in a
-file called `noaa_token.py` in the format `token = {"token": "#########"}`.
+- API Token: The code requires an API token available through NOAA's API service. Put
+your own in a file called `noaa_token.py` in the format `token = {"token": "#########"}`.
 
 ## Data Output
 Data is output in 2 JSON files. The `stations_info.json` output has the structure:
@@ -36,7 +36,8 @@ The `weather_data.json` output has the structure:
 }
 ```
 where each date element is a list of lists, each of those lists being in the order:
- 1. station_id
- 2. precipitation
- 3. max_temp
- 4. min_temp
+
+`[station_id, precipitation, max_temp, min_temp]`
+
+This isn't ideal for parsing the data in Python, but it is set up to be easy to import into
+Excel and the split across columns using the Power Query tool.
