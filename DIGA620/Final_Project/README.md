@@ -3,11 +3,12 @@
 This is code for my DIGA620 Final Project. `download_data.py` downloads data from
 [NOAA's API](https://www.ncdc.noaa.gov/cdo-web/webservices/v2#gettingStarted).
 
-## Stations
-Data is downloaded for 6 weather stations defined in the code.
+## Things to Define:
+ - Stations: Data is downloaded for weather stations identified in the code. Use the
+`get_stations.py` or `get_stations_fips.py` script to generate a list of acceptable
+stations in JSON format.
 
-## API Token
-The code requires an API token available through NOAA's API service. Put your own in a
+- API Token: The code requires an API token available through NOAA's API service. Put your own in a
 file called `noaa_token.py` in the format `token = {"token": "#########"}`.
 
 ## Data Output
