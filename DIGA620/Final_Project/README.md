@@ -41,3 +41,6 @@ where each date element is a list of lists, each of those lists being in the ord
 
 This isn't ideal for parsing the data in Python, but it is set up to be easy to import into
 Excel and the split across columns using the Power Query tool.
+
+## AI Statement
+No "AI" (LLM) tools were used in the creation of any code for this project.
