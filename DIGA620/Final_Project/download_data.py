@@ -14,29 +14,6 @@ stations = {
     "STEVENS POINT MUNICIPAL AIRPORT": "GHCND:USW00004895"
 }
 
-# NOAA API token
-token = noaa_token.token
-
-# Parameters for weather data retrieval
-# - datasetid: daily summaries
-# NOTE: stationid updated in retrieve_station_data for each station
-# - startdate/enddate: 3-month period
-# - datatypeid: retrieve just precipitation, max temp, min temp
-# - units: use standard (F, inches)
-# - limit: 1000 should cover all days (~90 records, 3 for each day)
-parameters = {
-    "datasetid": "GHCND",
-    "stationid": "",
-    "startdate": "2026-01-01",
-    "enddate": "2026-03-31",
-    "datatypeid": ["PRCP", "TMAX", "TMIN"],
-    "units": "standard",
-    "limit": "1000"
-}
-
-# Data endpoint
-data_endpoint = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-
 def reverse_geocode(latitude: str, longitude: str) -> dict:
     """Retrieve Zip, County, State from Google Geocoding API"""
     # Request components
@@ -114,14 +91,35 @@ def retrieve_weather_data(station: str, station_id: str, weather_data: dict) -> 
     }
 
     Where each date is a list of lists, each list being in the order:
-        station_id, precip, max_temp, min_temp
+        station_id, precip_inches, max_temp, min_temp
     to be split into separate columns once loaded in Excel.
     """
-    # Update stationid in parameters
-    parameters["stationid"] = station_id
+
+    # NOAA API token
+    token = noaa_token.token
+
+    # Parameters for weather data retrieval
+    # - datasetid: daily summaries
+    # - stationid NOTE: updated for each station
+    # - startdate/enddate: predefined 3-month period
+    # - datatypeid: retrieve just precipitation, max temp, min temp
+    # - units: use standard (F, inches)
+    # - limit: 1000 should cover all days (~90 records, 3 for each day)
+    parameters = {
+        "datasetid": "GHCND",
+        "stationid": station_id,
+        "startdate": "2026-01-01",
+        "enddate": "2026-03-31",
+        "datatypeid": ["PRCP", "TMAX", "TMIN"],
+        "units": "standard",
+        "limit": "1000"
+    }
+
+    # Data endpoint
+    noaa_data_endpoint = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
 
     # Request
-    station_weather = requests.get(data_endpoint, params = parameters, headers = token)
+    station_weather = requests.get(noaa_data_endpoint, params = parameters, headers = token)
 
     # Parse list of dict results
     results: list = station_weather.json()["results"]
